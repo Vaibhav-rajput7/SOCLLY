@@ -1,0 +1,23 @@
+{
+  "name": "LensRNApp",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "android": "echo \"Placeholder for react-native run-android\"",
+    "ios": "echo \"Placeholder for react-native run-ios\"",
+    "start": "echo \"Placeholder for react-native start\"",
+    "test": "echo \"Placeholder for jest\"",
+    "lint": "echo \"Placeholder for eslint .\""
+  },
+  "dependencies": {
+    "react": "18.2.0",
+    "react-native": "0.73.6"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0",
+    "@react-native/babel-preset": "0.73.21"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
