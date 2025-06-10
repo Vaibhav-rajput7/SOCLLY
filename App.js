@@ -1,22 +1,14 @@
 // /app/App.js
 import React, {useState, useEffect, useMemo} from 'react';
-import {SafeAreaView, StyleSheet, Text, View, Button, TextInput, Alert, Image, ScrollView, FlatList} from 'react-native'; // Added FlatList
-import {LensClient, development, PublicationType} from '@lens-protocol/client'; // Added PublicationType
+import {SafeAreaView, StyleSheet, Text, View, Button, TextInput, Alert, Image, ScrollView, FlatList, ActivityIndicator} from 'react-native';
+import {LensClient, development, PublicationType} from '@lens-protocol/client';
 import {Wallet} from 'ethers';
+import {jwtDecode} from 'jwt-decode';
 
-// WARNING: THIS IS A TEST-ONLY PRIVATE KEY. DO NOT USE IN A REAL APPLICATION.
-// TODO: REMOVE THIS - FOR TESTING ONLY. REPLACE WITH A SECURE WALLET SOLUTION.
-const TEST_ONLY_PRIVATE_KEY = "0x0123456789012345678901234567890123456789012345678901234567890123"; // Example private key
-
-// Helper to decode JWT (very basic, only for 'id' field for profileId)
+// Helper to decode JWT using jwt-decode library
 const decodeJwt = (token) => {
   try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
-    return JSON.parse(jsonPayload);
+    return jwtDecode(token);
   } catch (e) {
     console.error("Failed to decode JWT:", e);
     return null;
@@ -30,6 +22,7 @@ const App = () => {
   const [accessToken, setAccessToken] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authenticatedProfileId, setAuthenticatedProfileId] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Profile Fetching State
   const [profileHandleToFetch, setProfileHandleToFetch] = useState('');
@@ -53,12 +46,12 @@ const App = () => {
     return client;
   }, [accessToken]);
 
-
   const handleLogin = async () => {
     if (!address.trim()) {
       setFeedbackMessage('Please enter a wallet address.');
       return;
     }
+    setIsLoading(true);
     setFeedbackMessage('Attempting login...');
     setUserProfile(null);
     setAuthenticatedProfileId(null);
@@ -69,14 +62,20 @@ const App = () => {
       setChallengeInfo(challenge);
       setFeedbackMessage(`Challenge received...`);
 
-      if (!TEST_ONLY_PRIVATE_KEY) {
-        Alert.alert("Test Error", "TEST_ONLY_PRIVATE_KEY is not set.");
-        setFeedbackMessage("Error: Test private key not set.");
-        return;
-      }
-      const wallet = new Wallet(TEST_ONLY_PRIVATE_KEY);
+      // TODO: Replace this with proper wallet connection
+      Alert.alert(
+        "Wallet Connection Required",
+        "Please implement proper wallet connection using a wallet provider like WalletConnect or Web3Modal.",
+        [{ text: "OK" }]
+      );
+      setFeedbackMessage("Error: Wallet connection not implemented.");
+      return;
+
+      // The following code should be replaced with proper wallet connection
+      /*
+      const wallet = new Wallet(privateKey); // This should come from wallet connection
       const signature = await wallet.signMessage(challenge.text);
-      setFeedbackMessage('Message signed (simulated). Authenticating...');
+      setFeedbackMessage('Message signed. Authenticating...');
 
       const authResult = await lensClient.authentication.authenticate({ address, signature });
 
@@ -106,12 +105,15 @@ const App = () => {
         setAccessToken(null);
         setAuthenticatedProfileId(null);
       }
+      */
     } catch (error) {
       console.error('Login Error:', error);
       setFeedbackMessage(`Login Error: ${error.message || 'An unexpected error occurred.'}`);
       setIsAuthenticated(false);
       setAccessToken(null);
       setAuthenticatedProfileId(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -135,6 +137,7 @@ const App = () => {
       setFeedbackMessage('Please enter a profile handle (e.g., stani.lens).');
       return;
     }
+    setIsLoading(true);
     setFeedbackMessage(`Fetching profile for ${profileHandleToFetch}...`);
     setUserProfile(null);
 
@@ -151,6 +154,8 @@ const App = () => {
       console.error('Fetch Profile Error:', error);
       setUserProfile(null);
       setFeedbackMessage(`Error fetching profile: ${error.message || 'An unexpected error occurred.'}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -168,6 +173,7 @@ const App = () => {
       return;
     }
 
+    setIsLoading(true);
     setFeedbackMessage('Creating post...');
 
     try {
@@ -188,7 +194,18 @@ const App = () => {
       const { id: typedDataId, typedData } = typedDataResult.unwrap();
       setFeedbackMessage('Typed data created. Signing...');
 
-      const wallet = new Wallet(TEST_ONLY_PRIVATE_KEY);
+      // TODO: Replace with proper wallet connection
+      Alert.alert(
+        "Wallet Connection Required",
+        "Please implement proper wallet connection using a wallet provider like WalletConnect or Web3Modal.",
+        [{ text: "OK" }]
+      );
+      setFeedbackMessage("Error: Wallet connection not implemented.");
+      return;
+
+      // The following code should be replaced with proper wallet connection
+      /*
+      const wallet = new Wallet(privateKey); // This should come from wallet connection
       const signature = await wallet.signTypedData(typedData.domain, typedData.types, typedData.value);
       setFeedbackMessage('Signed typed data. Broadcasting...');
 
@@ -204,9 +221,12 @@ const App = () => {
       await lensClient.transaction.waitUntilComplete({forTxHash: broadcastResultValue.txHash});
       setFeedbackMessage(`Post created successfully and indexed! TxHash: ${broadcastResultValue.txHash}`);
       setPostContent('');
+      */
     } catch (error) {
       console.error('Create Post Error:', error);
       setFeedbackMessage(`Error creating post: ${error.message || 'An unexpected error occurred.'}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -216,6 +236,7 @@ const App = () => {
       setFeedPosts([]);
       return;
     }
+    setIsLoading(true);
     setFeedbackMessage(`Fetching feed for ${feedProfileHandle}...`);
     setFeedPosts([]);
 
@@ -232,9 +253,9 @@ const App = () => {
       const publicationsResult = await lensClient.publication.fetchAll({
         where: {
           from: [profileId],
-          publicationTypes: [PublicationType.Post], // Use enum for type safety
+          publicationTypes: [PublicationType.Post],
         },
-        limit: 10, // Example limit
+        limit: 10,
       });
 
       if (publicationsResult && publicationsResult.items) {
@@ -248,6 +269,8 @@ const App = () => {
       console.error('Fetch Feed Error:', error);
       setFeedPosts([]);
       setFeedbackMessage(`Error fetching feed: ${error.message || 'An unexpected error occurred.'}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -272,257 +295,177 @@ const App = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.centerContent}>
-          <Text style={styles.title}>LensRNApp</Text>
+      <ScrollView style={styles.scrollView}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Authentication</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter wallet address"
+            value={address}
+            onChangeText={setAddress}
+            editable={!isLoading}
+          />
+          <Button
+            title={isAuthenticated ? "Logout" : "Login"}
+            onPress={isAuthenticated ? handleLogout : handleLogin}
+            disabled={isLoading}
+          />
+        </View>
 
-          {!isAuthenticated ? (
-            <View style={styles.sectionFullWidth}>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your wallet address"
-                value={address}
-                onChangeText={setAddress}
-                autoCapitalize="none"
-              />
-              <Button title="Login with Lens" onPress={handleLogin} />
-            </View>
-          ) : (
-            <View style={styles.sectionFullWidth}>
-              <Text style={styles.infoText}>Authenticated! Profile ID: {authenticatedProfileId || 'N/A'}</Text>
-              {accessToken && <Text style={styles.tokenTextSmall}>Token: {accessToken.substring(0,30)}...</Text>}
-              <Button title="Logout" onPress={handleLogout} />
-
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Create a Post</Text>
-                <TextInput
-                  style={[styles.input, styles.multilineInput]}
-                  placeholder="What's on your mind?"
-                  value={postContent}
-                  onChangeText={setPostContent}
-                  multiline={true}
-                  numberOfLines={3}
-                />
-                <Button title="Create Post" onPress={createPost} disabled={!isAuthenticated} />
-              </View>
-
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Fetch Profile Details</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter Lens handle (e.g., stani.lens)"
-                  value={profileHandleToFetch}
-                  onChangeText={setProfileHandleToFetch}
-                  autoCapitalize="none"
-                />
-                <Button title="Fetch Profile" onPress={fetchProfile} />
-              </View>
-
-              {userProfile && (
-                <View style={styles.profileContainer}>
-                  <Text style={styles.profileTitle}>{userProfile.handle?.fullHandle || userProfile.handle?.localName}</Text>
-                  {userProfile.metadata?.picture?.optimized?.uri && (
-                    <Image
-                      source={{ uri: userProfile.metadata.picture.optimized.uri }}
-                      style={styles.profilePicture}
-                      onError={(e) => console.log("Failed to load image", e.nativeEvent.error)}
-                    />
-                  )}
-                  <Text>ID: {userProfile.id}</Text>
-                  <Text style={styles.bioText}>Bio: {userProfile.metadata?.bio || 'N/A'}</Text>
-                  <View style={styles.statsContainer}>
-                    <Text>Posts: {userProfile.stats?.posts ?? 'N/A'}</Text>
-                    <Text>Followers: {userProfile.stats?.followers ?? 'N/A'}</Text>
-                    <Text>Following: {userProfile.stats?.following ?? 'N/A'}</Text>
-                  </View>
-                </View>
-              )}
-
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Fetch Profile Feed</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter handle for feed (e.g., stani.lens)"
-                  value={feedProfileHandle}
-                  onChangeText={setFeedProfileHandle}
-                  autoCapitalize="none"
-                />
-                <Button title="Fetch Feed" onPress={fetchFeed} />
-              </View>
-
-              {feedPosts.length > 0 && (
-                <FlatList
-                  style={styles.feedList}
-                  data={feedPosts}
-                  keyExtractor={(item) => item.id}
-                  renderItem={({ item }) => (
-                    <View style={styles.postItem}>
-                      <Text style={styles.postHandle}>Post ID: {item.id}</Text>
-                      <Text>By Profile ID: {item.by?.id || 'N/A'}</Text>
-                      <Text>Content: {item.metadata?.content?.toString() || 'No content'}</Text>
-                      <Text style={styles.postDate}>Created At: {new Date(item.createdAt).toLocaleString()}</Text>
-                    </View>
-                  )}
-                />
-              )}
-
-            </View>
-          )}
-          {feedbackMessage ? <Text style={styles.feedback}>{feedbackMessage}</Text> : null}
-          {challengeInfo && !isAuthenticated && (
-            <View style={styles.challengeContainer}>
-              <Text style={styles.challengeTitleSmall}>Challenge to Sign:</Text>
-              <Text style={styles.challengeText}>{challengeInfo.text}</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Profile</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter profile handle (e.g., stani.lens)"
+            value={profileHandleToFetch}
+            onChangeText={setProfileHandleToFetch}
+            editable={!isLoading}
+          />
+          <Button
+            title="Fetch Profile"
+            onPress={fetchProfile}
+            disabled={isLoading}
+          />
+          {userProfile && (
+            <View style={styles.profileInfo}>
+              <Text>Handle: {userProfile.handle}</Text>
+              <Text>ID: {userProfile.id}</Text>
             </View>
           )}
         </View>
+
+        {isAuthenticated && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Create Post</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="What's on your mind?"
+              value={postContent}
+              onChangeText={setPostContent}
+              multiline
+              numberOfLines={4}
+              editable={!isLoading}
+            />
+            <Button
+              title="Post"
+              onPress={createPost}
+              disabled={isLoading}
+            />
+          </View>
+        )}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Feed</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter profile handle for feed"
+            value={feedProfileHandle}
+            onChangeText={setFeedProfileHandle}
+            editable={!isLoading}
+          />
+          <Button
+            title="Load Feed"
+            onPress={fetchFeed}
+            disabled={isLoading}
+          />
+          <FlatList
+            data={feedPosts}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View style={styles.postItem}>
+                <Text style={styles.postContent}>{item.metadata.content}</Text>
+                <Text style={styles.postDate}>
+                  {new Date(item.createdAt).toLocaleDateString()}
+                </Text>
+              </View>
+            )}
+          />
+        </View>
+
+        {isLoading && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#0000ff" />
+          </View>
+        )}
+
+        {feedbackMessage && (
+          <View style={styles.feedbackContainer}>
+            <Text style={styles.feedbackText}>{feedbackMessage}</Text>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flexGrow: 1,
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  scrollView: {
+    flex: 1,
+    padding: 16,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 12,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  profileInfo: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+  },
+  postItem: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+  },
+  postContent: {
+    fontSize: 16,
+  },
+  postDate: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  container: {
-    flex: 1,
-    backgroundColor: '#F5FCFF',
-  },
-  centerContent: {
-    alignItems: 'center',
-    width: '95%',
-    paddingVertical: 20,
-  },
-  sectionFullWidth: {
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  title: {
-    fontSize: 22,
-    textAlign: 'center',
-    marginVertical: 15,
-    fontWeight: 'bold',
-  },
-  input: {
-    height: 40,
-    width: '90%',
-    borderColor: 'gray',
-    borderWidth: 1,
-    marginBottom: 10,
-    paddingHorizontal: 10,
-    borderRadius: 5,
-    backgroundColor: '#fff',
-  },
-  multilineInput: {
-    height: 80,
-    textAlignVertical: 'top', // Android
-  },
-  infoText: {
-    fontSize: 16,
-    marginVertical: 8,
-    textAlign: 'center',
-  },
-  tokenTextSmall: {
-    fontSize: 10,
-    color: 'grey',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  feedback: {
-    marginTop: 10,
-    color: 'grey',
-    textAlign: 'center',
-    paddingHorizontal:10,
-  },
-  challengeContainer: {
-    marginTop: 10,
-    padding: 8,
+  feedbackContainer: {
+    marginTop: 12,
+    padding: 12,
     backgroundColor: '#f0f0f0',
-    borderRadius: 5,
-    width: '90%',
-  },
-  challengeTitleSmall: {
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  challengeText: {
-    fontSize: 11,
-    marginTop: 3,
-  },
-  section: {
-    marginTop: 15,
-    width: '100%',
-    alignItems: 'center',
-    paddingVertical: 15,
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  profileContainer: {
-    marginTop: 15,
-    padding: 15,
-    backgroundColor: '#ffffff',
     borderRadius: 8,
-    alignItems: 'center',
-    width: '90%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
-    elevation: 2,
   },
-  profileTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  profilePicture: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 8,
-    backgroundColor: '#e0e0e0',
-  },
-  bioText: {
-    textAlign: 'center',
-    marginVertical: 5,
+  feedbackText: {
+    fontSize: 14,
     color: '#333',
   },
-  statsContainer: {
-    marginTop: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-  },
-  feedList: {
-    width: '90%',
-    marginTop: 10,
-  },
-  postItem: {
-    padding: 10,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    marginBottom: 8,
-    borderRadius: 5,
-  },
-  postHandle: { // Though I'm displaying Post ID, this style name is kept from example
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  postDate: {
-    fontSize: 10,
-    color: 'grey',
-    marginTop: 4,
-  }
 });
 
 export default App;
